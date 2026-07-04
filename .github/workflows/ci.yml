@@ -7,8 +7,50 @@ on:
     branches: [develop, main]
 
 jobs:
-  validate:
+  detect-modules:
     runs-on: ubuntu-latest
+    outputs:
+      modules_json: ${{ steps.set-modules.outputs.modules_json }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-modules
+        shell: bash
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message || github.event.pull_request.title || '' }}
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import pathlib
+          import re
+
+          message = os.getenv('COMMIT_MESSAGE', '')
+          modules_dir = pathlib.Path('modules')
+          available = sorted([p.name for p in modules_dir.iterdir() if p.is_dir()]) if modules_dir.exists() else []
+
+          match = re.search(r'\btf_init\b\s*,\s*([a-zA-Z0-9_-]+(?:\s*,\s*[a-zA-Z0-9_-]+)*)', message)
+          if match:
+              requested = [m.strip() for m in match.group(1).split(',') if m.strip()]
+              selected = [m for m in requested if m in available]
+              if not selected:
+                  print('No matching module directories found. Falling back to all modules.')
+                  selected = available
+          else:
+              selected = available
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as fh:
+              fh.write(f"modules_json={json.dumps(selected)}\n")
+
+          print(f'Selected modules: {selected}')
+          PY
+
+  validate:
+    needs: detect-modules
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect-modules.outputs.modules_json) }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Terraform
@@ -18,6 +60,6 @@ jobs:
       - name: Terraform fmt
         run: terraform fmt -check -recursive
       - name: Terraform init
-        run: terraform -chdir=environments/dev init -backend=false
+        run: terraform -chdir=modules/${{ matrix.module }} init -backend=false
       - name: Terraform validate
-        run: terraform -chdir=environments/dev validate
+        run: terraform -chdir=modules/${{ matrix.module }} validate
