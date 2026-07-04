@@ -65,6 +65,16 @@ jobs:
             echo "Using module: $MODULE"
             echo "export TARGET_MODULE=$MODULE" >> "$BASH_ENV"
       - run:
+          name: Select AWS role by branch
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              echo "export AWS_ROLE_ARN=${AWS_PROD_ROLE_ARN}" >> "$BASH_ENV"
+              echo "export TF_VAR_environment=prod" >> "$BASH_ENV"
+            else
+              echo "export AWS_ROLE_ARN=${AWS_NONPROD_ROLE_ARN}" >> "$BASH_ENV"
+              echo "export TF_VAR_environment=nonprod" >> "$BASH_ENV"
+            fi
+      - run:
           name: Install Terraform
           command: |
             curl -fsSLo /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip
@@ -78,11 +88,12 @@ jobs:
           name: Terraform apply
           command: |
             export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+            export AWS_ROLE_ARN="${AWS_ROLE_ARN:-}"
             if [[ "$TARGET_MODULE" == "s3" ]]; then
-              export TF_VAR_bucket_name="${TF_BUCKET_NAME:-roshawsproject-dev-bucket}"
-              terraform -chdir="modules/${TARGET_MODULE}" apply -auto-approve -var="bucket_name=${TF_VAR_bucket_name}"
+              export TF_VAR_bucket_name="${TF_BUCKET_NAME:-roshawsproject-${TF_VAR_environment:-dev}-bucket}"
+              terraform -chdir="modules/${TARGET_MODULE}" apply -auto-approve -var="bucket_name=${TF_VAR_bucket_name}" -var="environment=${TF_VAR_environment:-nonprod}"
             else
-              terraform -chdir="modules/${TARGET_MODULE}" apply -auto-approve
+              terraform -chdir="modules/${TARGET_MODULE}" apply -auto-approve -var="environment=${TF_VAR_environment:-nonprod}"
             fi
 
 workflows:
@@ -94,4 +105,6 @@ workflows:
             - terraform-validate
           filters:
             branches:
-              only: main
+              only:
+                - develop
+                - main
