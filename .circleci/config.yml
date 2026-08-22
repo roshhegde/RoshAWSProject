@@ -18,15 +18,21 @@ jobs:
             MODULE="s3"
             if [[ "$COMMIT_MESSAGE" =~ tf_init,([a-zA-Z0-9_-]+) ]]; then
               REQUESTED="${BASH_REMATCH[1]}"
-              for candidate in ec2 eks iam s3 vpc; do
+              for candidate in ec2 eks iam s3 url-shortener vpc; do
                 if [[ "$candidate" == "$REQUESTED" ]]; then
                   MODULE="$REQUESTED"
                   break
                 fi
               done
             fi
+            if [[ "$MODULE" == "url-shortener" ]]; then
+              TARGET_DIRECTORY="modules/url-shortener/infra"
+            else
+              TARGET_DIRECTORY="modules/${MODULE}"
+            fi
             echo "Using module: $MODULE"
             echo "export TARGET_MODULE=$MODULE" >> "$BASH_ENV"
+            echo "export TARGET_DIRECTORY=$TARGET_DIRECTORY" >> "$BASH_ENV"
       - run:
           name: Install Terraform
           command: |
@@ -39,10 +45,63 @@ jobs:
           command: terraform fmt -check -recursive
       - run:
           name: Terraform init
-          command: terraform -chdir="modules/${TARGET_MODULE}" init -backend=false
+          command: terraform -chdir="$TARGET_DIRECTORY" init -backend=false
       - run:
           name: Terraform validate
-          command: terraform -chdir="modules/${TARGET_MODULE}" validate
+          command: terraform -chdir="$TARGET_DIRECTORY" validate
+
+  terraform-plan:
+    executor: terraform-executor
+    steps:
+      - checkout
+      - run:
+          name: Determine target module
+          command: |
+            COMMIT_MESSAGE="${CIRCLE_COMMIT_MESSAGE:-}"
+            MODULE="s3"
+            if [[ "$COMMIT_MESSAGE" =~ tf_init,([a-zA-Z0-9_-]+) ]]; then
+              REQUESTED="${BASH_REMATCH[1]}"
+              for candidate in ec2 eks iam s3 url-shortener vpc; do
+                if [[ "$candidate" == "$REQUESTED" ]]; then
+                  MODULE="$REQUESTED"
+                  break
+                fi
+              done
+            fi
+            if [[ "$MODULE" == "url-shortener" ]]; then
+              TARGET_DIRECTORY="modules/url-shortener/infra"
+            else
+              TARGET_DIRECTORY="modules/${MODULE}"
+            fi
+            echo "export TARGET_MODULE=$MODULE" >> "$BASH_ENV"
+            echo "export TARGET_DIRECTORY=$TARGET_DIRECTORY" >> "$BASH_ENV"
+      - run:
+          name: Select AWS role by branch
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              echo "export AWS_ROLE_ARN=${AWS_PROD_ROLE_ARN}" >> "$BASH_ENV"
+              echo "export TF_VAR_environment=prod" >> "$BASH_ENV"
+            else
+              echo "export AWS_ROLE_ARN=${AWS_NONPROD_ROLE_ARN}" >> "$BASH_ENV"
+              echo "export TF_VAR_environment=nonprod" >> "$BASH_ENV"
+            fi
+      - run:
+          name: Install Terraform
+          command: |
+            curl -fsSLo /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip
+            unzip -o /tmp/terraform.zip -d /tmp/terraform-bin
+            sudo mv /tmp/terraform-bin/terraform /usr/local/bin/terraform
+      - run:
+          name: Terraform init
+          command: terraform -chdir="$TARGET_DIRECTORY" init -backend=false
+      - run:
+          name: Terraform plan
+          command: |
+            terraform -chdir="$TARGET_DIRECTORY" plan -no-color -out=tfplan
+            terraform -chdir="$TARGET_DIRECTORY" show -no-color tfplan > /tmp/terraform-plan.txt
+      - store_artifacts:
+          path: /tmp/terraform-plan.txt
+          destination: terraform-plan.txt
 
   terraform-apply:
     executor: terraform-executor
@@ -55,15 +114,21 @@ jobs:
             MODULE="s3"
             if [[ "$COMMIT_MESSAGE" =~ tf_init,([a-zA-Z0-9_-]+) ]]; then
               REQUESTED="${BASH_REMATCH[1]}"
-              for candidate in ec2 eks iam s3 vpc; do
+              for candidate in ec2 eks iam s3 url-shortener vpc; do
                 if [[ "$candidate" == "$REQUESTED" ]]; then
                   MODULE="$REQUESTED"
                   break
                 fi
               done
             fi
+            if [[ "$MODULE" == "url-shortener" ]]; then
+              TARGET_DIRECTORY="modules/url-shortener/infra"
+            else
+              TARGET_DIRECTORY="modules/${MODULE}"
+            fi
             echo "Using module: $MODULE"
             echo "export TARGET_MODULE=$MODULE" >> "$BASH_ENV"
+            echo "export TARGET_DIRECTORY=$TARGET_DIRECTORY" >> "$BASH_ENV"
       - run:
           name: Select AWS role by branch
           command: |
@@ -83,7 +148,7 @@ jobs:
             terraform version
       - run:
           name: Terraform init
-          command: terraform -chdir="modules/${TARGET_MODULE}" init -backend=false
+          command: terraform -chdir="$TARGET_DIRECTORY" init -backend=false
       - run:
           name: Terraform apply
           command: |
@@ -91,18 +156,30 @@ jobs:
             export AWS_ROLE_ARN="${AWS_ROLE_ARN:-}"
             if [[ "$TARGET_MODULE" == "s3" ]]; then
               export TF_VAR_bucket_name="${TF_BUCKET_NAME:-roshawsproject-${TF_VAR_environment:-dev}-bucket}"
-              terraform -chdir="modules/${TARGET_MODULE}" apply -auto-approve -var="bucket_name=${TF_VAR_bucket_name}" -var="environment=${TF_VAR_environment:-nonprod}"
+              terraform -chdir="$TARGET_DIRECTORY" apply -auto-approve -var="bucket_name=${TF_VAR_bucket_name}" -var="environment=${TF_VAR_environment:-nonprod}"
             else
-              terraform -chdir="modules/${TARGET_MODULE}" apply -auto-approve -var="environment=${TF_VAR_environment:-nonprod}"
+              terraform -chdir="$TARGET_DIRECTORY" apply -auto-approve -var="environment=${TF_VAR_environment:-nonprod}"
             fi
 
 workflows:
   terraform_pipeline:
     jobs:
       - terraform-validate
-      - terraform-apply:
+      - terraform-plan:
           requires:
             - terraform-validate
+      - hold-for-apply:
+          type: approval
+          requires:
+            - terraform-plan
+          filters:
+            branches:
+              only:
+                - develop
+                - main
+      - terraform-apply:
+          requires:
+            - hold-for-apply
           filters:
             branches:
               only:
