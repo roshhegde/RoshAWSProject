@@ -43,7 +43,7 @@ curl -X POST "$API_URL/shorten" \
 
 ## CircleCI setup
 
-The included pipeline runs tests and Terraform validation on every change. The deployment job runs only from `main` and expects an `AWS_ROLE_ARN` environment variable. Configure CircleCI OpenID Connect to allow that role to be assumed; do not store long-lived AWS access keys in CircleCI.
+This project uses the repository-level [CircleCI configuration](../../.circleci/config.yml). Add dedicated URL-shortener test, validation, and deployment jobs there rather than creating a second configuration file inside this project. Configure CircleCI OpenID Connect to allow the deployment role to be assumed; do not store long-lived AWS access keys in CircleCI.
 
 Before enabling the deploy job, add a remote Terraform backend (S3 plus DynamoDB state locking) so local and CI state cannot diverge.
 
