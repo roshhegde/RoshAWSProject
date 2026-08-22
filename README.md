@@ -13,4 +13,4 @@ See [docs/aws-org-branching.md](docs/aws-org-branching.md) for the AWS Organizat
 
 ## Projects
 
-- [Serverless URL Shortener](projects/url-shortener/README.md) — API Gateway, Lambda, DynamoDB, Terraform, and CircleCI.
+- [Serverless URL Shortener](modules/url-shortener/README.md) — API Gateway, Lambda, DynamoDB, Terraform, and CircleCI.
