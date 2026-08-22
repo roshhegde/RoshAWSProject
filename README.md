@@ -10,3 +10,7 @@ This repository is designed for a branch-based deployment flow:
 - main -> prod account
 
 See [docs/aws-org-branching.md](docs/aws-org-branching.md) for the AWS Organizations and CircleCI setup.
+
+## Projects
+
+- [Serverless URL Shortener](modules/url-shortener/README.md) — API Gateway, Lambda, DynamoDB, Terraform, and CircleCI.

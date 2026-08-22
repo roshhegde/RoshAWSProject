@@ -1,0 +1,9 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+infra/tfplan
+infra/lambda.zip
+__pycache__/
+.pytest_cache/
+.venv/
