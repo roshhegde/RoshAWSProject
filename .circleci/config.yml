@@ -1,5 +1,10 @@
 version: 2.1
 
+parameters:
+  target_module:
+    type: string
+    default: ""
+
 executors:
   terraform-executor:
     docker:
@@ -14,16 +19,19 @@ jobs:
       - run:
           name: Determine target module
           command: |
-            COMMIT_MESSAGE="${CIRCLE_COMMIT_MESSAGE:-}"
-            MODULE="s3"
-            if [[ "$COMMIT_MESSAGE" =~ tf_init,([a-zA-Z0-9_-]+) ]]; then
-              REQUESTED="${BASH_REMATCH[1]}"
-              for candidate in ec2 eks iam s3 url-shortener vpc; do
-                if [[ "$candidate" == "$REQUESTED" ]]; then
-                  MODULE="$REQUESTED"
-                  break
-                fi
-              done
+            MODULE="<< pipeline.parameters.target_module >>"
+            if [[ -z "$MODULE" ]]; then
+              COMMIT_MESSAGE="${CIRCLE_COMMIT_MESSAGE:-}"
+              MODULE="s3"
+              if [[ "$COMMIT_MESSAGE" =~ tf_init,([a-zA-Z0-9_-]+) ]]; then
+                REQUESTED="${BASH_REMATCH[1]}"
+                for candidate in ec2 eks iam s3 url-shortener vpc; do
+                  if [[ "$candidate" == "$REQUESTED" ]]; then
+                    MODULE="$REQUESTED"
+                    break
+                  fi
+                done
+              fi
             fi
             if [[ "$MODULE" == "url-shortener" ]]; then
               TARGET_DIRECTORY="modules/url-shortener/infra"
@@ -57,16 +65,19 @@ jobs:
       - run:
           name: Determine target module
           command: |
-            COMMIT_MESSAGE="${CIRCLE_COMMIT_MESSAGE:-}"
-            MODULE="s3"
-            if [[ "$COMMIT_MESSAGE" =~ tf_init,([a-zA-Z0-9_-]+) ]]; then
-              REQUESTED="${BASH_REMATCH[1]}"
-              for candidate in ec2 eks iam s3 url-shortener vpc; do
-                if [[ "$candidate" == "$REQUESTED" ]]; then
-                  MODULE="$REQUESTED"
-                  break
-                fi
-              done
+            MODULE="<< pipeline.parameters.target_module >>"
+            if [[ -z "$MODULE" ]]; then
+              COMMIT_MESSAGE="${CIRCLE_COMMIT_MESSAGE:-}"
+              MODULE="s3"
+              if [[ "$COMMIT_MESSAGE" =~ tf_init,([a-zA-Z0-9_-]+) ]]; then
+                REQUESTED="${BASH_REMATCH[1]}"
+                for candidate in ec2 eks iam s3 url-shortener vpc; do
+                  if [[ "$candidate" == "$REQUESTED" ]]; then
+                    MODULE="$REQUESTED"
+                    break
+                  fi
+                done
+              fi
             fi
             if [[ "$MODULE" == "url-shortener" ]]; then
               TARGET_DIRECTORY="modules/url-shortener/infra"
@@ -115,16 +126,19 @@ jobs:
       - run:
           name: Determine target module
           command: |
-            COMMIT_MESSAGE="${CIRCLE_COMMIT_MESSAGE:-}"
-            MODULE="s3"
-            if [[ "$COMMIT_MESSAGE" =~ tf_init,([a-zA-Z0-9_-]+) ]]; then
-              REQUESTED="${BASH_REMATCH[1]}"
-              for candidate in ec2 eks iam s3 url-shortener vpc; do
-                if [[ "$candidate" == "$REQUESTED" ]]; then
-                  MODULE="$REQUESTED"
-                  break
-                fi
-              done
+            MODULE="<< pipeline.parameters.target_module >>"
+            if [[ -z "$MODULE" ]]; then
+              COMMIT_MESSAGE="${CIRCLE_COMMIT_MESSAGE:-}"
+              MODULE="s3"
+              if [[ "$COMMIT_MESSAGE" =~ tf_init,([a-zA-Z0-9_-]+) ]]; then
+                REQUESTED="${BASH_REMATCH[1]}"
+                for candidate in ec2 eks iam s3 url-shortener vpc; do
+                  if [[ "$candidate" == "$REQUESTED" ]]; then
+                    MODULE="$REQUESTED"
+                    break
+                  fi
+                done
+              fi
             fi
             if [[ "$MODULE" == "url-shortener" ]]; then
               TARGET_DIRECTORY="modules/url-shortener/infra"
