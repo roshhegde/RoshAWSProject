@@ -97,7 +97,12 @@ jobs:
       - run:
           name: Terraform plan
           command: |
-            terraform -chdir="$TARGET_DIRECTORY" plan -no-color -out=tfplan
+            if [[ "$TARGET_MODULE" == "s3" ]]; then
+              export TF_VAR_bucket_name="${TF_BUCKET_NAME:-roshawsproject-${TF_VAR_environment:-dev}-bucket}"
+              terraform -chdir="$TARGET_DIRECTORY" plan -no-color -out=tfplan -var="bucket_name=${TF_VAR_bucket_name}"
+            else
+              terraform -chdir="$TARGET_DIRECTORY" plan -no-color -out=tfplan
+            fi
             terraform -chdir="$TARGET_DIRECTORY" show -no-color tfplan > /tmp/terraform-plan.txt
       - store_artifacts:
           path: /tmp/terraform-plan.txt
