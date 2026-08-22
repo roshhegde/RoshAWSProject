@@ -28,3 +28,4 @@ Add these in CircleCI project settings or a shared context:
 - The commit message can still select a module, for example:
   - tf_init,s3
   - tf_init,ec2
+  - tf_init,url-shortener

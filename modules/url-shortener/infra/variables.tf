@@ -9,3 +9,9 @@ variable "project_name" {
   type        = string
   default     = "url-shortener"
 }
+
+variable "environment" {
+  description = "Deployment environment supplied by the CI pipeline."
+  type        = string
+  default     = "nonprod"
+}

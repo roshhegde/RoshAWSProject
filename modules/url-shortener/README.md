@@ -45,6 +45,8 @@ curl -X POST "$API_URL/shorten" \
 
 This project uses the repository-level [CircleCI configuration](../../.circleci/config.yml). Add dedicated URL-shortener test, validation, and deployment jobs there rather than creating a second configuration file inside this project. Configure CircleCI OpenID Connect to allow the deployment role to be assumed; do not store long-lived AWS access keys in CircleCI.
 
+The current repository pipeline selects this stack when the commit message contains `tf_init,url-shortener`. It validates the configuration, publishes a `terraform-plan.txt` artifact, and requires manual approval before applying changes on `develop` or `main`.
+
 Before enabling the deploy job, add a remote Terraform backend (S3 plus DynamoDB state locking) so local and CI state cannot diverge.
 
 ## Cost cleanup

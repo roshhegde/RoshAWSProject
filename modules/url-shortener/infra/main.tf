@@ -3,10 +3,10 @@ provider "aws" {
 }
 
 locals {
-  name = "${var.project_name}-${terraform.workspace}"
+  name = "${var.project_name}-${var.environment}"
   tags = {
     Project     = var.project_name
-    Environment = terraform.workspace
+    Environment = var.environment
     ManagedBy   = "Terraform"
   }
 }

@@ -2,7 +2,7 @@ resource "aws_s3_bucket" "this" {
   bucket = var.bucket_name
   acl    = var.acl
 
-  tags = merge(var.default_tags, var.tags)
+  tags = merge(var.default_tags, { Environment = var.environment }, var.tags)
 
   force_destroy = var.force_destroy
 }

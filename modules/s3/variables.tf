@@ -36,3 +36,9 @@ variable "default_tags" {
     Owner       = "Roshan"
   }
 }
+
+variable "environment" {
+  description = "Deployment environment supplied by the CI pipeline."
+  type        = string
+  default     = "nonprod"
+}
